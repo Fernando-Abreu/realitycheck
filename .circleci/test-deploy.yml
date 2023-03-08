@@ -1,0 +1,46 @@
+# Clojure CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-clojure/ for more details
+#
+version: 2.1
+
+orbs:
+  hello-world: sample-orbs/hello-world@0.0.10
+
+commands:
+    mk-artifacts:
+      description: Some test
+      parameters:
+        where:
+          description: Directory into which the files will be created.
+          type: string
+          default: '/tmp/'
+      steps:
+      - run:
+          name: Make artifacts that are unique to this build
+          command: |
+            mkdir -p '<<parameters.where>>'
+            echo 'Hello world'                                >  '<<parameters.where>>/hello-world.txt'
+            # Note: for some unexplained reason, everything goes horribly wrong if we try to use
+            # the <<pipeline.git.revision>> value that https://circleci.com/docs/variables/#pipeline-values says we can.
+            # Even if it's commented out.
+            echo <<pipeline.git.revision>>
+            echo "pipeline.git.revision=${CIRCLE_SHA1}"       >  '<<parameters.where>>/details.txt'
+            echo "CIRCLE_WORKFLOW_ID=${CIRCLE_WORKFLOW_ID}"   >> '<<parameters.where>>/details.txt'
+            echo "${CIRCLE_SHA1}"                             >  '<<parameters.where>>/git.sha.txt'
+
+jobs:
+ make-some-artifacts:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - mk-artifacts:
+          where: dummy-build-artifact
+
+workflows:
+  test-deploy:
+      jobs:
+      # Make sure to include "filters: *filters" in every test job you want to run as part of your deployment.
+      # ...and the orb-tools/pack job, but NOT the orb-tools/publish job(s).
+      - make-some-artifacts
